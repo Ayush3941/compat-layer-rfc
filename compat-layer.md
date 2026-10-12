@@ -45,7 +45,6 @@ The architecture consists of the following components:
 | **Chaincode Service** | Hosts and executes existing Fabric chaincodes as independent CCaaS services |
 | **Lifecycle Manager** | Manages chaincode installation, organizational approvals, and committed definitions |
 | **Discovery Resolver** | Locates and selects Orchestrator instances through configurable discovery mechanisms |
-| **Transaction Store** | Tracks transaction progress and identifies duplicate requests |
 
 ## Chaincode execution
 
