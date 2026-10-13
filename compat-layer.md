@@ -5,7 +5,7 @@ nav_order: 3
 ---
 
 - Feature Name: Fabric Chaincode Compatibility
-- Start Date: 2026-10-08
+- Start Date: 2026-10-14
 - RFC PR:
 - Fabric-X Component: fabric-x-chaincode-compatibility
 - Fabric-X Issue:
@@ -28,8 +28,11 @@ The main objectives are:
 
 - Run existing Go chaincodes using Chaincode-as-a-Service (CCaaS).
 - Support multi organization execution and endorsement.
-- Provide Fabric-compatible chaincode lifecycle operations.
-- Allow extensible discovery and integration with Fabric-X components.
+- Provide Fabric compatible chaincode lifecycle operations.
+- Allow pluggable discovery and integration with Fabric-X components.
+- Support transaction coordination, duplicate detection, and finality tracking.
+
+Together, these capabilities aim to simplify migration while preserving familiar Fabric workflows and leveraging Fabric-X's transaction processing model.
 
 # Guide-level explanation
 [guide-level-explanation]: #guide-level-explanation
@@ -50,7 +53,7 @@ The architecture consists of the following components:
 
 Consider an existing Fabric application that uses chaincode to manage assets. With the compatibility layer, developers can deploy the same chaincode as an external service and continue invoking its existing functions.
 
-For example, an asset-transfer operation can continue using familiar chaincode APIs such as `GetState`, `PutState`, and `DelState` to retrieve an asset, change its ownership, and update its state. Developers do not need to rewrite this business logic using Fabric-X-specific transaction APIs.
+For example, an asset-transfer operation can continue using familiar shim APIs such as `GetState`, `PutState`, and `DelState` to retrieve an asset, change its ownership, and update its state. Developers do not need to rewrite this business logic using Fabric-X-specific transaction APIs.
 
 The compatibility layer handles the underlying interaction with Fabric-X, allowing supported chaincode operations to follow its transaction processing model.
 
@@ -72,14 +75,16 @@ Once a chaincode definition is committed, newly started Orchestrators within the
 
 Organizations are not restricted to a single Orchestrator instance. Multiple instances can be deployed to distribute workloads and improve service availability.
 
-The compatibility layer allows these instances to be discovered and selected without modifying existing chaincodes or their endorsement requirements. This provides a foundation for load balancing and flexible deployment configurations.
+The compatibility layer provides a pluggable discovery interface that resolves these instances through static configuration or dynamic resolution, allowing multiple instances to be associated with the same organization.
 
-Repeated transaction requests can also be identified, helping reduce unnecessary execution and submission.
+In case of Multi-Org Endorsement The initiating Orchestrator selects an instance from the resolved endpoints and forwards the transaction proposal for execution and endorsement. This enables flexible deployment and workload distribution without modifying existing chaincodes or endorsement requirements.
+
+Each Orchestrator also maintains a transaction store that tracks transaction IDs and their execution states. This helps identify repeated requests and prevent unnecessary execution or submission.
 
 # Reference-level explanation
 [reference-level-explanation]: #reference-level-explanation
 
-The compatibility layer operates independently of Fabric-X core components and communicates with existing services through their exposed APIs.
+The compatibility layer operates as a separate service without modifying Fabric-X core components. It integrates with existing Fabric-X services through their supported interfaces and the Fabric-X SDK.
 
 ## Architectural overview
 
@@ -87,9 +92,9 @@ The architecture separates chaincode execution from Fabric-X transaction process
 
 The design separates three main responsibilities:
 
-- **Execution:** The compatibility helper provides the chaincode execution context and translates state operations into transaction simulation results.
-- **Coordination:** Orchestrators manage communication between participating organizations and assemble endorsed transactions.
-- **State management:** Fabric-X maintains committed ledger state and chaincode definitions, while Orchestrators maintain local runtime and transaction information.
+- **Execution and endorsement:** The compatibility helper handles chaincode execution and state operations, producing results for endorsement.
+- **Coordination:** Orchestrators coordinate execution across organizations, collect endorsements, and manage transaction submission and finality.
+- **State and lifecycle management:** Fabric-X maintains committed ledger state and chaincode definitions, while Orchestrators manage local installation, runtime, and transaction information.
 
 This separation allows the compatibility layer to reuse existing Fabric chaincode execution mechanisms without introducing the traditional Fabric peer architecture into Fabric-X core components.
 
@@ -103,15 +108,15 @@ For multi-organization endorsement, the initiating Orchestrator resolves the req
 
 The Fabric-X SDK provides reusable functionality for transaction construction, identity handling, and interaction with Fabric-X services. The resulting transaction is submitted to the Ordering Service, while its commit status is observed through the Notification Service.
 
-## Lifecycle management
+## Coordination
 
-The lifecycle manager separates local chaincode installation information from committed chaincode definitions.
+The initiating Orchestrator coordinates transaction execution and endorsement across participating organizations. It identifies the required organizations and resolves their Orchestrator instances through the discovery interface.
 
-Packaging and installation prepare the chaincode runtime, while organizational approvals and commit-readiness checks determine whether a definition can be committed.
+Each participating Orchestrator independently executes the chaincode and returns its execution response, read-write set, and endorsement. The initiating Orchestrator compares these results for consistency and combines the endorsements only when the required conditions are satisfied.
 
-Installation records remain local to individual Orchestrators, while committed definitions are persisted on the Fabric-X ledger. These definitions are indexed to support retrieval and reconstruction during startup.
+Once the endorsements are collected, the initiating Orchestrator constructs the Fabric-X transaction using the SDK and submits it to the Ordering Service. The transaction's final outcome is then observed through the Notification Service.
 
-When an Orchestrator starts, it synchronizes its committed lifecycle state from the ledger, independently of the instance that originally committed the chaincode. This enables multiple Orchestrators within the same organization to maintain a consistent view of deployed chaincode definitions.
+Throughout this process, the Orchestrator maintains transaction progress in a local store to identify duplicate requests and track execution, submission, and finality.
 
 ## Discovery and transaction coordination
 
@@ -130,29 +135,28 @@ These states help identify repeated requests and track execution progress. Addit
 
 ## Compatibility limitations
 
-The initial implementation supports direct key-based state access, allowing chaincodes to read, write, and delete individual ledger entries using their exact keys.
-
-Operations requiring ordered key traversal, including range queries and pagination, depend on additional capabilities in the Fabric-X Query Service. Private data collections and other advanced query operations remain outside the initial scope.
+- **State operations:** The initial implementation supports direct key-based `GetState`, `PutState`, and `DelState` operations using exact ledger keys.
+- **Range queries and iterators:** Ordered key traversal, partial composite-key queries, and pagination require additional capabilities in the Fabric-X Query Service.
+- **Advanced queries:** Rich queries and history queries remain outside the initial scope.
+- **Private data:** Private data collections and their associated chaincode APIs are not supported.
+- **Chaincode runtime:** The initial implementation supports Go chaincodes deployed as external Chaincode-as-a-Service (CCaaS) runtimes.
 
 For further architectural details and implementation considerations, see the [Compatibility Layer Design Document](https://docs.google.com/document/d/1eseyFreUHmNmviQoq8qYGqatzMXgYZb79CFnlk6kBqg/edit?tab=t.0) (working draft).
 
 # Drawbacks
 [drawbacks]: #drawbacks
 
-The compatibility layer introduces additional services and communication overhead, which may increase transaction latency and limit performance compared with applications interacting directly with Fabric-X.
-
-The initial implementation supports only the Chaincode-as-a-Service (CCaaS) model, requiring chaincodes to run as external services.
-
-Maintaining compatibility with Fabric chaincode protocols introduces ongoing maintenance requirements.
-
-Some Fabric features, particularly private data collections and advanced queries, cannot be supported without additional functionality or architectural changes.
+- **Communication overhead:** Additional services and cross-organization communication may increase transaction latency compared with native Fabric-X applications.
+- **Runtime dependency:** The initial implementation supports only Chaincode-as-a-Service (CCaaS), requiring chaincodes to run as external services.
+- **Maintenance overhead:** Maintaining compatibility with Fabric chaincode protocols introduces ongoing maintenance requirements.
+- **Feature limitations:** Private data collections, advanced queries, and other unsupported Fabric operations require additional functionality or architectural changes.
 
 # Rationale and alternatives
 [alternatives]: #alternatives
 
-An alternative is to rewrite existing chaincodes as native Fabric-X applications. While this offers flexibility, it imposes significant migration costs.
+-An alternative is to rewrite existing chaincodes as native Fabric-X applications. While this offers flexibility, it imposes significant migration costs.
 
-Another approach would be to integrate chaincode execution directly into Fabric-X core components. However, this would introduce a dependency on the traditional Fabric execution model.
+-Another approach would be to integrate chaincode execution directly into Fabric-X core components. However, this would introduce a dependency on the traditional Fabric execution model.
 
 The proposed approach keeps chaincode execution separate from Fabric-X, allowing existing applications to migrate while preserving the modular architecture of Fabric-X.
 
@@ -161,8 +165,8 @@ The proposed approach keeps chaincode execution separate from Fabric-X, allowing
 
 - [Fabric Chaincode-as-a-Service](https://hyperledger-fabric.readthedocs.io/en/latest/cc_service.html) demonstrates how chaincode execution can be separated from the Fabric peer process.
 - [Fabric Smart Client](https://github.com/hyperledger-labs/fabric-smart-client) provides an alternative model for coordinating distributed transaction execution.
-- The Fabric-X SDK proposal introduces reusable building blocks for custom endorsers and identifies chaincode compatibility as an intended application.
-
+- The [Fabric-X SDK](https://github.com/hyperledger/fabric-x-sdk) proposal introduces reusable building blocks for custom endorsers and identifies chaincode compatibility as an intended application.
+- 
 # Testing
 [testing]: #testing
 
@@ -184,7 +188,7 @@ These tests will run end-to-end against a Fabric-X network, covering both normal
 The compatibility layer depends on:
 
 - Fabric chaincode shim and protobuf definitions.
-- [Fabric-X SDK](https://github.com/hyperledger/fabric-x-sdk) for transaction construction, identity handling, and interaction with Fabric-X services.
+- Fabric-X SDK for transaction construction, identity handling, and interaction with Fabric-X services.
 - Fabric-X Committer Query Service.
 - Fabric-X Ordering and Notification Services.
 - gRPC for orchestrator and chaincode communication.
