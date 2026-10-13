@@ -90,6 +90,8 @@ The compatibility layer operates as a separate service without modifying Fabric-
 
 The architecture separates chaincode execution from Fabric-X transaction processing. Each Orchestrator contains an embedded compatibility helper that implements the Fabric chaincode shim communication protocol and communicates with external Chaincode-as-a-Service (CCaaS) runtimes.
 
+![Fabric Chaincode Compatibility Architecture](./images/chaincode-compatibility-overview.png)
+
 The design separates three main responsibilities:
 
 - **Execution and endorsement:** The compatibility helper handles chaincode execution and state operations, producing results for endorsement.
