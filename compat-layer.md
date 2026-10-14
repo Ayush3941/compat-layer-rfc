@@ -96,7 +96,7 @@ The design separates three main responsibilities:
 
 - **Execution and endorsement:** The compatibility helper handles chaincode execution and state operations, producing results for endorsement.
 - **Coordination:** Orchestrators coordinate execution across organizations, collect endorsements, and manage transaction submission and finality.
-- **State and lifecycle management:** Fabric-X maintains committed ledger state and chaincode definitions, while Orchestrators manage local installation, runtime, and transaction information.
+- **Discovery and transaction coordination:** Orchestrators resolve instances through configurable discovery mechanisms and track transaction progress locally to identify duplicate requests and manage execution states.
 
 This separation allows the compatibility layer to reuse existing Fabric chaincode execution mechanisms without introducing the traditional Fabric peer architecture into Fabric-X core components.
 
