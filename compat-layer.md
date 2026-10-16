@@ -18,9 +18,9 @@ This proposal introduces a compatibility layer that enables existing Hyperledger
 # Motivation
 [motivation]: #motivation
 
-Fabric-X offers better performance and scalability compared to traditional Hyperledger Fabric. However, businesses already using Fabric have invested heavily in their existing chaincodes and infrastructure, making migration to Fabric-X costly and difficult.
+Fabric-X introduces a modular transaction processing architecture designed for improved performance and scalability. However, unlike traditional Hyperledger Fabric, it does not provide a native chaincode execution environment. Organizations with existing Fabric applications therefore face significant migration challenges, as their chaincodes cannot be directly executed on Fabric-X without additional infrastructure or modifications.
 
-To encourage Fabric-X adoption, organizations need a simpler way to migrate without rebuilding their existing applications. The compatibility layer addresses this by allowing existing Fabric chaincodes to work with Fabric-X with minimal changes, reducing migration effort and encouraging wider adoption.
+To encourage Fabric-X adoption, organizations need a simpler way to migrate without rebuilding their existing applications. The compatibility layer addresses this by allowing existing Fabric chaincodes to work with Fabric-X with minimal changes.This allows organizations to preserve their existing chaincode business logic while adopting Fabric-X's transaction processing model, reducing migration complexity and development effort.
 
 The compatibility layer addresses this gap by reusing the existing Fabric chaincode shim protocol and connecting chaincode execution to Fabric-X services.
 
