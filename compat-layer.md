@@ -167,9 +167,9 @@ The proposed approach keeps chaincode execution separate from Fabric-X, allowing
 # Prior art
 [prior-art]: #prior-art
 
-- [Fabric Chaincode-as-a-Service](https://hyperledger-fabric.readthedocs.io/en/latest/cc_service.html) demonstrates how chaincode execution can be separated from the Fabric peer process.
-- [Fabric Smart Client](https://github.com/hyperledger-labs/fabric-smart-client) provides an alternative model for coordinating distributed transaction execution.
-- The [Fabric-X SDK](https://github.com/hyperledger/fabric-x-sdk) proposal introduces reusable building blocks for custom endorsers and identifies chaincode compatibility as an intended application.
+- [Fabric Chaincode-as-a-Service](https://hyperledger-fabric.readthedocs.io/en/latest/cc_service.html) demonstrates how chaincode execution can be separated from the Fabric peer process. This proposal builds on that model while adapting chaincode execution to Fabric-X's transaction processing architecture.
+- [Fabric Smart Client](https://github.com/hyperledger-labs/fabric-smart-client) provides a model for coordinating distributed transaction execution. The compatibility layer follows a different approach, focusing specifically on preserving Fabric chaincode execution and endorsement workflows.
+- The [Fabric-X SDK](https://github.com/hyperledger/fabric-x-sdk) proposal introduces reusable building blocks for custom endorsers and identifies chaincode compatibility as an intended application. The compatibility layer builds on these components to provide a dedicated execution and coordination environment for existing Fabric chaincodes.
 
 # Testing
 [testing]: #testing
