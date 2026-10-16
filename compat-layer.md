@@ -22,8 +22,6 @@ Fabric-X introduces a modular transaction processing architecture designed for i
 
 To encourage Fabric-X adoption, organizations need a simpler way to migrate without rebuilding their existing applications. The compatibility layer addresses this by allowing existing Fabric chaincodes to work with Fabric-X with minimal changes.This allows organizations to preserve their existing chaincode business logic while adopting Fabric-X's transaction processing model, reducing migration complexity and development effort.
 
-The compatibility layer addresses this gap by reusing the existing Fabric chaincode shim protocol and connecting chaincode execution to Fabric-X services.
-
 The main objectives are:
 
 - Run existing Go chaincodes using Chaincode-as-a-Service (CCaaS).
