@@ -4,7 +4,7 @@ title: Fabric Chaincode Compatibility
 nav_order: 3
 ---
 
-- Feature Name: Fabric Chaincode Compatibility
+- Feature Name: Fabric-X Chaincode Compatibility
 - Start Date: 2026-10-14
 - RFC PR:
 - Fabric-X Component: fabric-x-chaincode-compatibility
