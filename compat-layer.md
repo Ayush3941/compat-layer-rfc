@@ -1,6 +1,6 @@
 ---
 layout: default
-title: Fabric Chaincode Compatibility
+title: Fabric-X Chaincode Compatibility
 nav_order: 3
 ---
 
