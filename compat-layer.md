@@ -133,6 +133,8 @@ To reduce redundant processing, the Orchestrator maintains a transaction store w
 
 These states help identify repeated requests and track execution progress. Additional recovery and synchronization mechanisms may be required when multiple Orchestrators process transactions concurrently or restart during execution.
 
+If an Orchestrator or Query Service times out, requests may fail over to another instance while preserving state consistency. If required endorsements cannot be obtained, submission is aborted. Transaction IDs identify client retries to prevent duplicate processing. Submitted transactions without finality notifications remain SUBMITTED until their outcome is confirmed, without automatic re-submission.
+
 ## Compatibility limitations
 
 - **State operations:** The initial implementation supports direct key-based `GetState`, `PutState`, and `DelState` operations using exact ledger keys.
