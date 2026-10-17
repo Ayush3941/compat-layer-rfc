@@ -13,19 +13,19 @@ nav_order: 3
 # Summary
 [summary]: #summary
 
-This proposal introduces a compatibility layer that enables existing Hyperledger Fabric chaincodes to run on Fabric-X without modifying their business logic. It provides an execution environment that translates Fabric chaincode operations into Fabric-X transactions, while supporting multi organization endorsement, chaincode lifecycle management, and pluggable orchestrator discovery. The goal is to simplify migration from Fabric to Fabric-X while preserving the existing chaincode programming model.
+This proposal introduces a compatibility layer that enables existing Hyperledger Fabric chaincodes to run on Fabric-X without modifying their business logic. It provides an execution environment that translates Fabric chaincode operations into Fabric-X transactions, while supporting multi-organization endorsement, chaincode lifecycle management, and pluggable orchestrator discovery. The goal is to simplify migration from Fabric to Fabric-X while preserving the existing chaincode programming model.
 
 # Motivation
 [motivation]: #motivation
 
 Fabric-X introduces a modular transaction processing architecture designed for improved performance and scalability. However, unlike traditional Hyperledger Fabric, it does not provide a native chaincode execution environment. Organizations with existing Fabric applications therefore face significant migration challenges, as their chaincodes cannot be directly executed on Fabric-X without additional infrastructure or modifications.
 
-To encourage Fabric-X adoption, organizations need a simpler way to migrate without rebuilding their existing applications. The compatibility layer addresses this by allowing existing Fabric chaincodes to work with Fabric-X with minimal changes.This allows organizations to preserve their existing chaincode business logic while adopting Fabric-X's transaction processing model, reducing migration complexity and development effort.
+The proposed compatibility layer addresses this challenge by enabling existing Fabric chaincodes to execute on Fabric-X with minimal modifications. This allows organizations to preserve their chaincode business logic while adopting Fabric-X's transaction processing model, reducing migration complexity and development effort.
 
 The main objectives are:
 
 - Run existing Go chaincodes using Chaincode-as-a-Service (CCaaS).
-- Support multi organization execution and endorsement.
+- Support multi-organization execution and endorsement.
 - Provide Fabric compatible chaincode lifecycle operations.
 - Allow pluggable discovery and integration with Fabric-X components.
 - Support transaction coordination, duplicate detection, and finality tracking.
@@ -75,7 +75,7 @@ Organizations are not restricted to a single Orchestrator instance. Multiple ins
 
 The compatibility layer provides a pluggable discovery interface that resolves these instances through static configuration or dynamic resolution, allowing multiple instances to be associated with the same organization.
 
-In case of Multi-Org Endorsement The initiating Orchestrator selects an instance from the resolved endpoints and forwards the transaction proposal for execution and endorsement. This enables flexible deployment and workload distribution without modifying existing chaincodes or endorsement requirements.
+In case of multi-Org Endorsement The initiating Orchestrator selects an instance from the resolved endpoints and forwards the transaction proposal for execution and endorsement. This enables flexible deployment and workload distribution without modifying existing chaincodes or endorsement requirements.
 
 Each Orchestrator also maintains a transaction store that tracks transaction IDs and their execution states. This helps identify repeated requests and prevent unnecessary execution or submission.
 
@@ -146,7 +146,7 @@ For further architectural details and implementation considerations, see the [Co
 # Drawbacks
 [drawbacks]: #drawbacks
 
-- **Communication overhead:** Additional services and cross-organization communication may increase transaction latency compared with native Fabric-X applications.
+- **Communication overhead:** Additional chaincode execution and cross-organization communication are expected to increase transaction latency compared with native Fabric-X applications. The extent of this overhead will be evaluated through comparative latency and throughput benchmarks under equivalent workloads.
 - **Runtime dependency:** The initial implementation supports only Chaincode-as-a-Service (CCaaS), requiring chaincodes to run as external services.
 - **Maintenance overhead:** Maintaining compatibility with Fabric chaincode protocols introduces ongoing maintenance requirements.
 - **Feature limitations:** Private data collections, advanced queries, and other unsupported Fabric operations require additional functionality or architectural changes.
@@ -176,13 +176,15 @@ Beyond standard unit tests for individual components such as the Orchestrator, c
 
 The primary goal is to demonstrate that existing Fabric chaincodes can execute on Fabric-X without modifying their business logic, while preserving consistent execution results, endorsement, and commit semantics. To achieve this, we will adopt two complementary strategies:
 
-1. **Replay Existing Chaincodes:** Select representative chaincodes from the [Fabric Samples](https://github.com/hyperledger/fabric-samples) repository and execute their supported operations on Fabric-X. Verify that state changes, transaction responses, and chaincode events behave as expected, including multi-organization endorsement and MVCC validation.
+1. **Chaincode Replay and Differential Testing:** Execute representative chaincodes from the Fabric Samples repository on both traditional Hyperledger Fabric and Fabric-X through the compatibility layer, using identical inputs. Compare chaincode responses, final ledger states, and supported events to verify consistent execution behavior. Additionally, test multi-organization endorsement and MVCC validation.
 
 2. **Lifecycle and Orchestrator Integration:** Test chaincode installation, organizational approvals, and ledger-backed definitions across multiple Orchestrators. Verify that newly started instances can reconstruct lifecycle state, discover other Orchestrators, and handle duplicate requests and transaction finality correctly.
 
+3. **Performance Evaluation:** Compare transaction latency and throughput between native Fabric-X applications and the compatibility layer under equivalent workloads. Measure end-to-end transaction latency, including commit finality, and sustained throughput for single-organization and multi-organization execution to quantify the overhead introduced by the compatibility layer.
+
 The success criteria are that existing Fabric chaincodes produce consistent execution results across participating organizations and that the resulting transactions are correctly validated and committed by Fabric-X.
 
-These tests will run end-to-end against a Fabric-X network, covering both normal execution and failure scenarios. The goal is to demonstrate that the compatibility layer provides a reliable migration path for existing Fabric applications without requiring changes to their chaincode business logic.
+These tests will run against traditional Hyperledger Fabric and Fabric-X networks, covering both normal execution and failure scenarios. The goal is to demonstrate that the compatibility layer provides a reliable migration path for existing Fabric applications without requiring changes to their chaincode business logic.
 
 # Dependencies
 [dependencies]: #dependencies
