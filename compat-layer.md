@@ -110,7 +110,7 @@ The Fabric-X SDK provides reusable functionality for transaction construction, i
 
 Chaincode events generated through **SetEvent** are included in the endorsed transaction metadata using the Fabric-X SDK. The event name and payload are stored in **applicationpb.Tx.Metadata[0]** and carried into the ordered block. After receiving **COMMITTED** finality, the Orchestrator returns the event in the invocation response.
 
-## Coordinationa
+## Coordination
 
 The initiating Orchestrator coordinates transaction execution and endorsement across participating organizations. It identifies the required organizations and resolves their Orchestrator instances through the discovery interface.
 
