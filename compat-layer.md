@@ -163,10 +163,6 @@ The following table summarizes the Fabric shim APIs supported by the current Go 
 | State validation parameter APIs | Not supported |
 | `InvokeChaincode` (chaincode-to-chaincode invocation) | Not supported |
 
-- **¹ State semantics:** `GetState` currently observes pending writes and deletions within the same invocation, unlike traditional Fabric's committed-state reads.
-- **² Proposal context:** Transaction and identity information is derived from the client proposal. Complete Fabric MSP and authorization validation is not currently provided.
-- **³ Chaincode events:** `SetEvent` stores the event name and payload in Fabric-X transaction metadata. The Orchestrator returns the event after `COMMITTED` finality. Event-only transactions without state writes are not currently supported.
-
 Unsupported operations and additional compatibility features may be addressed in future iterations.
 
 
