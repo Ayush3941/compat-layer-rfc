@@ -69,6 +69,15 @@ Developers can use familiar lifecycle operations such as `package`, `install`, `
 
 Once a chaincode definition is committed, newly started Orchestrators within the same organization can recognize the deployment without repeating the commitment process. This simplifies chaincode management across multiple instances.
 
+
+## Lifecycle state and commitment
+
+The Lifecycle Manager maintains organizational approvals in each Orchestrator's instance-local, in-memory store. During `checkcommitreadiness`, the initiating Orchestrator verifies approvals from participating organizations through RPC requests. These approvals are not persisted on the Fabric-X ledger or shared automatically across instances.
+
+Once the required approvals are obtained, the initiating Orchestrator submits the committed chaincode definition as a Fabric-X transaction into a configurable lifecycle namespace (`lifecycle-namespace`, default `0`). Committed definitions are stored as ledger-backed metadata and reconstructed by Orchestrators during startup.
+
+Application namespace creation and endorsement policy configuration remain separate Fabric-X operations. Approval checks are performed by the Lifecycle Manager, while Fabric-X validates the resulting lifecycle transaction according to the lifecycle namespace's policy.
+
 ## Orchestrator discovery and availability
 
 Organizations are not restricted to a single Orchestrator instance. Multiple instances can be deployed to distribute workloads and improve service availability.
@@ -114,9 +123,13 @@ Chaincode events generated through **SetEvent** are included in the endorsed tra
 
 The initiating Orchestrator coordinates transaction execution and endorsement across participating organizations. It identifies the required organizations and resolves their Orchestrator instances through the discovery interface.
 
+Inter-Orchestrator communication supports configurable mutually authenticated TLS (mTLS). Each participating Orchestrator independently verifies the original client's proposal signature, MSP identity, and invocation permissions against configured trust and authorization policies before execution and endorsement. These checks operate independently of endpoint discovery.
+
 Each participating Orchestrator independently executes the chaincode and returns its execution response, read-write set, and endorsement. The initiating Orchestrator compares these results for consistency and combines the endorsements only when the required conditions are satisfied.
 
 Once the endorsements are collected, the initiating Orchestrator constructs the Fabric-X transaction using the SDK and submits it to the Ordering Service. The transaction's final outcome is then observed through the Notification Service.
+
+Endorsement requirements are configured as Fabric-X namespace policies, using Fabric's `SignaturePolicyEnvelope` representation within `NamespacePolicy.msp_rule`. This supports organization-level `AND`, `OR`, and `OutOf` policies. The initiating Orchestrator interprets these policies to coordinate execution and collect endorsements, while Fabric-X verifies endorsement signatures and enforces the namespace policy during transaction validation. Namespace policies are configured separately from chaincode lifecycle definitions, and the current Orchestrator planner does not cover all role-specific or multiple-signer policy requirements.
 
 Throughout this process, the Orchestrator maintains transaction progress in a local store to identify duplicate requests and track execution, submission, and finality.
 
@@ -151,17 +164,17 @@ The following table summarizes the Fabric shim APIs supported by the current Go 
 
 | Shim API | Current status |
 |---|---|
-| `GetState`, `PutState`, `DelState` | Supported for exact keys¹ |
+| `GetState`, `PutState`, `DelState` | Supported |
 | `GetArgs`, `GetStringArgs`, `GetFunctionAndParameters`, `GetArgsSlice` | Supported |
-| `GetTxID`, `GetChannelID`, `GetTxTimestamp` | Supported² |
-| `GetCreator`, `GetTransient`, `GetSignedProposal`, `GetBinding`, `GetDecorations` | Supported² |
+| `GetTxID`, `GetChannelID`, `GetTxTimestamp` | Supported |
+| `GetCreator`, `GetTransient`, `GetSignedProposal`, `GetBinding`, `GetDecorations` | Supported |
 | `CreateCompositeKey`, `SplitCompositeKey` | Supported for direct key operations |
 | `SetEvent` | Supported³ |
 | Range queries, partial composite-key queries, and pagination | Not supported |
 | Rich queries and history queries | Not supported |
-| Private data APIs | Not supported |
-| State validation parameter APIs | Not supported |
-| `InvokeChaincode` (chaincode-to-chaincode invocation) | Not supported |
+| Private data APIs | Outside initial scope  |
+| `GetStateValidationParameter`, `SetStateValidationParameter` | Outside initial scope |
+| `InvokeChaincode` (chaincode-to-chaincode invocation) | Outside initial scope |
 
 Unsupported operations and additional compatibility features may be addressed in future iterations.
 
@@ -230,5 +243,4 @@ Additional Query Service and Validator-Committer capabilities will be required f
 - Should Fabric's package and install lifecycle steps be simplified for CCaaS deployments?
 - How should range queries and phantom-read validation be supported in Fabric-X?
 - What additional coordination is required for reliable transaction recovery across multiple orchestrators?
-- How should authentication and authorization be enforced between orchestrators?
 - Which additional Fabric chaincode APIs should be prioritized for future compatibility?
