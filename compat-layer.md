@@ -102,7 +102,7 @@ This separation allows the compatibility layer to reuse existing Fabric chaincod
 
 When an Orchestrator receives a transaction proposal, it resolves the corresponding chaincode runtime and invokes it through the embedded compatibility helper.
 
-The helper processes Fabric shim messages and translates state requests into operations supported by Fabric-X. Direct key-based reads are retrieved from committed state through the Committer Query Service, while writes and deletions are recorded locally to construct the transaction's read-write set.
+The helper processes Fabric shim messages and translates state requests into operations supported by Fabric-X. Direct key-based reads are retrieved from committed state through the Committer Query Service, recording each key's version or absence in the transaction's read set for MVCC validation. Writes and deletions are recorded locally in the write set without modifying committed state. Subsequent reads continue to retrieve committed values rather than the transaction's pending writes, preserving Fabric's execution semantics.
 
 For multi-organization endorsement, the initiating Orchestrator resolves the required organizations and requests independent execution through their respective Orchestrators. The resulting execution responses and read-write sets are compared for consistency before endorsements are combined. Any disagreement prevents the transaction from proceeding to submission.
 
