@@ -125,7 +125,7 @@ The initiating Orchestrator coordinates transaction execution and endorsement ac
 
 Inter-Orchestrator communication supports configurable mutually authenticated TLS (mTLS). Each participating Orchestrator independently verifies the original client's proposal signature, MSP identity, and invocation permissions against configured trust and authorization policies before execution and endorsement. These checks operate independently of endpoint discovery.
 
-Each participating Orchestrator independently executes the chaincode and returns its execution response, read-write set, and endorsement. The initiating Orchestrator compares these results for consistency and combines the endorsements only when the required conditions are satisfied.
+Each participating Orchestrator independently executes the chaincode against committed state obtained through its Query Service and returns its execution response, read-write set, and endorsement. The initiating Orchestrator compares these results and combines endorsements only when they agree; otherwise, submission is aborted. The compatibility layer does not enforce shared ledger snapshots across organizations, leaving final transaction validation and commitment to Fabric-X.
 
 Once the endorsements are collected, the initiating Orchestrator constructs the Fabric-X transaction using the SDK and submits it to the Ordering Service. The transaction's final outcome is then observed through the Notification Service.
 
@@ -169,7 +169,7 @@ The following table summarizes the Fabric shim APIs supported by the current Go 
 | `GetTxID`, `GetChannelID`, `GetTxTimestamp` | Supported |
 | `GetCreator`, `GetTransient`, `GetSignedProposal`, `GetBinding`, `GetDecorations` | Supported |
 | `CreateCompositeKey`, `SplitCompositeKey` | Supported for direct key operations |
-| `SetEvent` | Supported³ |
+| `SetEvent` | Supported |
 | Range queries, partial composite-key queries, and pagination | Not supported |
 | Rich queries and history queries | Not supported |
 | Private data APIs | Outside initial scope  |
