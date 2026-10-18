@@ -13,7 +13,7 @@ nav_order: 3
 # Summary
 [summary]: #summary
 
-This proposal introduces a compatibility layer that enables existing Hyperledger Fabric chaincodes to run on Fabric-X without modifying their business logic. It provides an execution environment that translates Fabric chaincode operations into Fabric-X transactions, while supporting multi-organization endorsement, chaincode lifecycle management, and pluggable orchestrator discovery. The goal is to simplify migration from Fabric to Fabric-X while preserving the existing chaincode programming model.
+This proposal introduces a compatibility layer that enables existing Hyperledger Fabric chaincodes using supported shim APIs to run on Fabric-X without modifying their business logic. It provides an execution environment that translates Fabric chaincode operations into Fabric-X transactions, while supporting multi-organization endorsement, chaincode lifecycle management, and pluggable orchestrator discovery. The goal is to simplify migration from Fabric to Fabric-X while preserving the existing chaincode programming model.
 
 # Motivation
 [motivation]: #motivation
@@ -82,7 +82,7 @@ Each Orchestrator also maintains a transaction store that tracks transaction IDs
 # Reference-level explanation
 [reference-level-explanation]: #reference-level-explanation
 
-The compatibility layer operates as a separate service without modifying Fabric-X core components. It integrates with existing Fabric-X services through their supported interfaces and the Fabric-X SDK.
+The compatibility layer operates as an external service and integrates with Fabric-X through its existing interfaces and SDK. The initial implementation supports direct key-based state operations without modifying Fabric-X core components. Extending compatibility to additional Fabric chaincode APIs may require general purpose enhancements to Fabric-X services and transaction validation, developed in coordination with the Fabric-X community.
 
 ## Architectural overview
 
@@ -108,7 +108,9 @@ For multi-organization endorsement, the initiating Orchestrator resolves the req
 
 The Fabric-X SDK provides reusable functionality for transaction construction, identity handling, and interaction with Fabric-X services. The resulting transaction is submitted to the Ordering Service, while its commit status is observed through the Notification Service.
 
-## Coordination
+Chaincode events generated through **SetEvent** are included in the endorsed transaction metadata using the Fabric-X SDK. The event name and payload are stored in **applicationpb.Tx.Metadata[0]** and carried into the ordered block. After receiving **COMMITTED** finality, the Orchestrator returns the event in the invocation response.
+
+## Coordinationa
 
 The initiating Orchestrator coordinates transaction execution and endorsement across participating organizations. It identifies the required organizations and resolves their Orchestrator instances through the discovery interface.
 
@@ -138,10 +140,35 @@ If an Orchestrator or Query Service times out, requests may fail over to another
 ## Compatibility limitations
 
 - **State operations:** The initial implementation supports direct key-based `GetState`, `PutState`, and `DelState` operations using exact ledger keys.
-- **Range queries and iterators:** Ordered key traversal, partial composite-key queries, and pagination require additional capabilities in the Fabric-X Query Service.
+- **Range queries and iterators:** Ordered traversal, partial composite-key queries, and pagination require Query Service extensions and Validator-Committer support for phantom read validation.
 - **Advanced queries:** Rich queries and history queries remain outside the initial scope.
 - **Private data:** Private data collections and their associated chaincode APIs are not supported.
 - **Chaincode runtime:** The initial implementation supports Go chaincodes deployed as external Chaincode-as-a-Service (CCaaS) runtimes.
+
+### Fabric shim API support
+
+The following table summarizes the Fabric shim APIs supported by the current Go CCaaS implementation.
+
+| Shim API | Current status |
+|---|---|
+| `GetState`, `PutState`, `DelState` | Supported for exact keys¹ |
+| `GetArgs`, `GetStringArgs`, `GetFunctionAndParameters`, `GetArgsSlice` | Supported |
+| `GetTxID`, `GetChannelID`, `GetTxTimestamp` | Supported² |
+| `GetCreator`, `GetTransient`, `GetSignedProposal`, `GetBinding`, `GetDecorations` | Supported² |
+| `CreateCompositeKey`, `SplitCompositeKey` | Supported for direct key operations |
+| `SetEvent` | Supported³ |
+| Range queries, partial composite-key queries, and pagination | Not supported |
+| Rich queries and history queries | Not supported |
+| Private data APIs | Not supported |
+| State validation parameter APIs | Not supported |
+| `InvokeChaincode` (chaincode-to-chaincode invocation) | Not supported |
+
+- **¹ State semantics:** `GetState` currently observes pending writes and deletions within the same invocation, unlike traditional Fabric's committed-state reads.
+- **² Proposal context:** Transaction and identity information is derived from the client proposal. Complete Fabric MSP and authorization validation is not currently provided.
+- **³ Chaincode events:** `SetEvent` stores the event name and payload in Fabric-X transaction metadata. The Orchestrator returns the event after `COMMITTED` finality. Event-only transactions without state writes are not currently supported.
+
+Unsupported operations and additional compatibility features may be addressed in future iterations.
+
 
 For further architectural details and implementation considerations, see the [Compatibility Layer Design Document](https://docs.google.com/document/d/1eseyFreUHmNmviQoq8qYGqatzMXgYZb79CFnlk6kBqg/edit?tab=t.0) (working draft).
 
@@ -178,7 +205,7 @@ Beyond standard unit tests for individual components such as the Orchestrator, c
 
 The primary goal is to demonstrate that existing Fabric chaincodes can execute on Fabric-X without modifying their business logic, while preserving consistent execution results, endorsement, and commit semantics. To achieve this, we will adopt two complementary strategies:
 
-1. **Chaincode Replay and Differential Testing:** Execute representative chaincodes from the Fabric Samples repository on both traditional Hyperledger Fabric and Fabric-X through the compatibility layer, using identical inputs. Compare chaincode responses, final ledger states, and supported events to verify consistent execution behavior. Additionally, test multi-organization endorsement and MVCC validation.
+1. **Chaincode Replay and Differential Testing:** Execute representative chaincodes from the Fabric Samples repository on both traditional Hyperledger Fabric and Fabric-X through the compatibility layer, using identical inputs. Compare chaincode responses, final ledger states, and supported events to verify consistent execution behavior. Additionally, test multi-organization endorsement and MVCC validation.Initial testing will cover supported operations from Fabric Samples. Operations such as GetAllAssets, which depend on GetStateByRange, will be tested once range-query support becomes available.
 
 2. **Lifecycle and Orchestrator Integration:** Test chaincode installation, organizational approvals, and ledger-backed definitions across multiple Orchestrators. Verify that newly started instances can reconstruct lifecycle state, discover other Orchestrators, and handle duplicate requests and transaction finality correctly.
 
@@ -199,13 +226,13 @@ The compatibility layer depends on:
 - Fabric-X Ordering and Notification Services.
 - gRPC for orchestrator and chaincode communication.
 
-Additional Query Service functionality will be required for complete range-query and iterator support.
+Additional Query Service and Validator-Committer capabilities will be required for complete range-query support and phantom-read validation.
 
 # Unresolved questions
 [unresolved]: #unresolved-questions
 
 - Should Fabric's package and install lifecycle steps be simplified for CCaaS deployments?
-- How should range query support be introduced into Fabric-X?
+- How should range queries and phantom-read validation be supported in Fabric-X?
 - What additional coordination is required for reliable transaction recovery across multiple orchestrators?
 - How should authentication and authorization be enforced between orchestrators?
 - Which additional Fabric chaincode APIs should be prioritized for future compatibility?
